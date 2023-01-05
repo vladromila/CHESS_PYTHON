@@ -10,14 +10,11 @@ Class that saves the data that matters for every piece
 
 class ChessPiece:
 
-    def __init__(self, name, color, value, texture=None, texture_rect=None):
+    def __init__(self, name, color, texture=None, texture_rect=None):
         self.name = name
         self.color = color
-        value_sign = 1 if color == 'white' else -1
-        self.value = value * value_sign
         self.moves = []
         self.moved = False
-        self.possible_moves = []
         self.texture = texture
         self.set_texture(False)
         self.texture_rect = texture_rect
@@ -45,39 +42,37 @@ class Pawn(ChessPiece):
     def __init__(self, color):
         self.dir = -1 if color == 'white' else 1
         self.en_passant = False
-        super().__init__('pawn', color, 1.0)
+        super().__init__('pawn', color)
 
 
 class Knight(ChessPiece):
 
     def __init__(self, color):
-        super().__init__('knight', color, 3.0)
+        super().__init__('knight', color)
 
 
 class Bishop(ChessPiece):
 
     def __init__(self, color):
-        super().__init__('bishop', color, 3.001)
-
-
-class Rook(ChessPiece):
-
-    def __init__(self, color):
-        super().__init__('rook', color, 5.0)
+        super().__init__('bishop', color)
 
 
 class Queen(ChessPiece):
 
     def __init__(self, color):
-        super().__init__('queen', color, 9.0)
+        super().__init__('queen', color)
+
+
+class Rook(ChessPiece):
+
+    def __init__(self, color):
+        super().__init__('rook', color)
 
 
 class King(ChessPiece):
 
     def __init__(self, color):
-        self.left_rook = None
-        self.right_rook = None
-        super().__init__('king', color, 10000.0)
+        super().__init__('king', color)
 
 
 class Square:
@@ -92,31 +87,38 @@ class Square:
         self.alphacol = self.ALPHACOLS[col]
         self.possible_moves = []
 
-    def __eq__(self, other):
-        return self.row == other.row and self.col == other.col
-
     def has_piece(self):
         return self.piece != None
 
     def isempty(self):
         return not self.has_piece()
 
-    def has_team_piece(self, color):
-        return self.has_piece() and self.piece.color == color
-
     def has_enemy_piece(self, color):
         return self.has_piece() and self.piece.color != color
 
-    def isempty_or_enemy(self, color):
+    def has_opposite_piece_or_empty(self, color):
         return self.isempty() or self.has_enemy_piece(color)
 
     def calculate_possible_moves(self, boardsquares):
         self.possible_moves = []
         if isinstance(self.piece, Pawn):
-            if self.piece.moved == False:
+            if self.col >= 1:
+                if boardsquares[self.row+self.piece.dir*1][self.col-1].has_enemy_piece(self.piece.color):
+                    self.possible_moves.append(
+                        (self.row+self.piece.dir*1, self.col-1))
+            if self.col <= 6:
+                if boardsquares[self.row+self.piece.dir*1][self.col+1].has_enemy_piece(self.piece.color):
+                    self.possible_moves.append(
+                        (self.row+self.piece.dir*1, self.col+1))
+            if boardsquares[self.row+self.piece.dir*1][self.col].isempty():
                 self.possible_moves.append(
-                    (self.row+self.piece.dir*2, self.col))
-            self.possible_moves.append((self.row+self.piece.dir*1, self.col))
+                    (self.row+self.piece.dir*1, self.col))
+            else:
+                return
+            if self.piece.moved == False:
+                if boardsquares[self.row+self.piece.dir*2][self.col].isempty():
+                    self.possible_moves.append(
+                        (self.row+self.piece.dir*2, self.col))
         elif isinstance(self.piece, Knight):
             possible_move_options = [(self.row+2, self.col+1),
                                      (self.row+2, self.col-1),
@@ -124,15 +126,217 @@ class Square:
                                      (self.row+1, self.col-2),
                                      (self.row-2, self.col+1),
                                      (self.row-2, self.col-1),
-                                     (self.row-1, self.row+2),
+                                     (self.row-1, self.col+2),
                                      (self.row-1, self.col-2),
                                      ]
-            print(possible_move_options)
 
             for move in possible_move_options:
-                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7 and boardsquares[move[0]][move[1]].has_piece():
-                    print(boardsquares[move[0]][move[1]].piece.name)
-                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7 and boardsquares[move[0]][move[1]].isempty():
+                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7 and boardsquares[move[0]][move[1]].has_opposite_piece_or_empty(self.piece.color):
+                    self.possible_moves.append(move)
+        elif isinstance(self.piece, King):
+            possible_move_options = [(self.row+1, self.col),
+                                     (self.row+1, self.col-1),
+                                     (self.row+1, self.col+1),
+                                     (self.row, self.col+1),
+                                     (self.row, self.col-1),
+                                     (self.row-1, self.col),
+                                     (self.row-1, self.col-1),
+                                     (self.row-1, self.col+1),
+                                     ]
+
+            for move in possible_move_options:
+                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7 and boardsquares[move[0]][move[1]].has_opposite_piece_or_empty(self.piece.color):
+                    self.possible_moves.append(move)
+        elif isinstance(self.piece, Queen):
+            print("salut bro!")
+            possible_move_options = []
+
+            current_r = self.row
+            current_c = self.col
+
+            for c in range(current_c+1, NUMBER_OF_COLUMNS, 1):
+                if boardsquares[current_r][c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((current_r, c))
+                    if boardsquares[current_r][c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for c in range(current_c-1, -1, - 1):
+                if boardsquares[current_r][c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((current_r, c))
+                    if boardsquares[current_r][c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for r in range(current_r-1, -1, -1):
+                if boardsquares[r][current_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((r, current_c))
+                    if boardsquares[r][current_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for r in range(current_r+1, NUMBER_OF_ROWS, 1):
+                if boardsquares[r][current_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((r, current_c))
+                    if boardsquares[r][current_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            copy_c = current_c-1
+            copy_r = current_r-1
+            while copy_c >= 0 and copy_r >= 0:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c-1
+                copy_r = copy_r-1
+
+            copy_c = current_c+1
+            copy_r = current_r+1
+            while copy_c < NUMBER_OF_COLUMNS and copy_r < NUMBER_OF_ROWS:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c+1
+                copy_r = copy_r+1
+
+            copy_c = current_c-1
+            copy_r = current_r+1
+            while copy_c >= 0 and copy_r < NUMBER_OF_ROWS:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c-1
+                copy_r = copy_r+1
+
+            copy_c = current_c+1
+            copy_r = current_r-1
+            while copy_c < NUMBER_OF_COLUMNS and copy_r >= 0:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c+1
+                copy_r = copy_r-1
+
+            print(possible_move_options)
+            for move in possible_move_options:
+                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
+                    self.possible_moves.append(move)
+        elif isinstance(self.piece, Rook):
+            possible_move_options = []
+
+            current_r = self.row
+            current_c = self.col
+
+            for c in range(current_c+1, NUMBER_OF_COLUMNS, 1):
+                if boardsquares[current_r][c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((current_r, c))
+                    if boardsquares[current_r][c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for c in range(current_c-1, -1, - 1):
+                if boardsquares[current_r][c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((current_r, c))
+                    if boardsquares[current_r][c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for r in range(current_r-1, -1, -1):
+                if boardsquares[r][current_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((r, current_c))
+                    if boardsquares[r][current_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            for r in range(current_r+1, NUMBER_OF_ROWS, 1):
+                if boardsquares[r][current_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((r, current_c))
+                    if boardsquares[r][current_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+
+            print(possible_move_options)
+            for move in possible_move_options:
+                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
+                    self.possible_moves.append(move)
+        elif isinstance(self.piece, Bishop):
+            possible_move_options = []
+
+            current_r = self.row
+            current_c = self.col
+
+            copy_c = current_c-1
+            copy_r = current_r-1
+            while copy_c >= 0 and copy_r >= 0:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c-1
+                copy_r = copy_r-1
+
+            copy_c = current_c+1
+            copy_r = current_r+1
+            while copy_c < NUMBER_OF_COLUMNS and copy_r < NUMBER_OF_ROWS:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c+1
+                copy_r = copy_r+1
+
+            copy_c = current_c-1
+            copy_r = current_r+1
+            while copy_c >= 0 and copy_r < NUMBER_OF_ROWS:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c-1
+                copy_r = copy_r+1
+
+            copy_c = current_c+1
+            copy_r = current_r-1
+            while copy_c < NUMBER_OF_COLUMNS and copy_r >= 0:
+                if boardsquares[copy_r][copy_c].has_opposite_piece_or_empty(self.piece.color):
+                    possible_move_options.append((copy_r, copy_c))
+                    if boardsquares[copy_r][copy_c].has_enemy_piece(self.piece.color):
+                        break
+                else:
+                    break
+                copy_c = copy_c+1
+                copy_r = copy_r-1
+
+            print(possible_move_options)
+            for move in possible_move_options:
+                if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
                     self.possible_moves.append(move)
 
 
@@ -155,6 +359,8 @@ class MainGame:
         self.lastMousePos = (0, 0)
 
         self.possible_moves = []
+
+        self.currently_playing = "white"
 
     def display_background(self):
         for r in range(NUMBER_OF_ROWS):
@@ -260,7 +466,7 @@ class MainGame:
                     pressed_r = int(e.pos[1]//SQUARE_SIZE)
                     print(pressed_c, pressed_r)
                     print(self.boardsquares[pressed_r][pressed_c].has_piece())
-                    if self.boardsquares[pressed_r][pressed_c].has_piece():
+                    if self.boardsquares[pressed_r][pressed_c].has_piece() and self.boardsquares[pressed_r][pressed_c].piece.color == self.currently_playing:
                         self.lastMousePos = (e.pos[0], e.pos[1])
                         self.dragged_piece = self.boardsquares[pressed_r][pressed_c].piece
                         self.dragged_piece_initial_pos = (pressed_r, pressed_c)
@@ -279,10 +485,27 @@ class MainGame:
                                 self.dragged_piece_initial_pos[0]][self.dragged_piece_initial_pos[1]].piece
                             self.boardsquares[pressed_r][pressed_c].piece.moved = True
                             self.boardsquares[self.dragged_piece_initial_pos[0]][self.dragged_piece_initial_pos[1]] = Square(
-                                self.dragged_piece_initial_pos[0], self.dragged_piece_initial_pos[1])
+                                self.dragged_piece_initial_pos[0], self.dragged_piece_initial_pos[1], None)
+                            """
+                            Queen promotion for white pawns
+                            """
+                            if isinstance(self.boardsquares[pressed_r][pressed_c].piece, Pawn) and (pressed_r == 0 and self.boardsquares[pressed_r][pressed_c].piece.color == "white"):
+                                self.boardsquares[pressed_r][pressed_c] = Square(
+                                    pressed_r, pressed_c, Queen("white"))
+                            """
+                            Queen promotion for black pawns
+                            """
+                            if isinstance(self.boardsquares[pressed_r][pressed_c].piece, Pawn) and (pressed_r == 7 and self.boardsquares[pressed_r][pressed_c].piece.color == "black"):
+                                self.boardsquares[pressed_r][pressed_c] = Square(
+                                    pressed_r, pressed_c, Queen("black"))
                             self.calculate_moves_for_all_pieces()
+                            self.currently_playing = "white" if self.currently_playing == "black" else "black"
                         self.isdragging = False
                         self.dragged_piece = None
+                        
+                elif e.type == pygame.KEYDOWN:
+                    if e.key == pygame.K_r:
+                        self.__init__()
                 elif e.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit(1)
