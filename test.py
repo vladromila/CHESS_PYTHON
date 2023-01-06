@@ -3,8 +3,6 @@ from pprint import pprint
 from stockfish import Stockfish
 
 stockfish = Stockfish("C:\\Users\\rvabo\Desktop\\chess_py\\stockfish.exe")
-
-
 def fen_to_board(fen):
     board = []
     for row in fen.split('/'):
@@ -13,19 +11,18 @@ def fen_to_board(fen):
             if c == ' ':
                 break
             elif c in '12345678':
-                brow.extend(['--'] * int(c))
+                brow.extend( ['--'] * int(c) )
             elif c == 'p':
-                brow.append('bp')
+                brow.append( 'bp' )
             elif c == 'P':
-                brow.append('wp')
+                brow.append( 'wp' )
             elif c > 'Z':
-                brow.append('b'+c.upper())
+                brow.append( 'b'+c.upper() )
             else:
-                brow.append('w'+c)
+                brow.append( 'w'+c )
 
-        board.append(brow)
+        board.append( brow )
     return board
-
 
 def board_to_fen(board, color):
     # Use StringIO to build string more efficiently than concatenating
@@ -50,20 +47,11 @@ def board_to_fen(board, color):
         s.write(f' {color} KQkq - 0 1')
         return s.getvalue()
 
-# fen = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1'
+#fen = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1'
 
-# pprint( fen_to_board(fen) )
+#pprint( fen_to_board(fen) )
 
 
-stockfish.set_fen_position(board_to_fen([
-    ['bR', '--', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],  # 8
-    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],  # 7
-    ['--', '--', '--', '--', '--', '--', '--', '--'],  # 6
-    ['--', '--', '--', '--', '--', '--', '--', '--'],  # 5
-    ['--', '--', '--', '--', '--', '--', '--', '--'],  # 4
-    ['--', '--', '--', '--', '--', '--', '--', '--'],  # 3
-    ['wp', 'wp', 'bN', 'wp', 'wp', 'wp', 'wp', 'wp'],  # 2
-    ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']  # 1
-], "b"))
-# a      b     c     d     e     f     g     h
+stockfish.set_fen_position("rnbkq1nr/ppp2ppp/8/b2pp3/4PPP1/2P5/P2P3P/RNBKQBNR b KQkq - 0 1")
+ # a      b     c     d     e     f     g     h
 print(stockfish.get_best_move())
