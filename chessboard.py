@@ -87,6 +87,7 @@ class ChessBoard:
     def __init__(self, type, white_top=False, testing=False, boardsquares=[]):
         self.testing = testing
         self.white_top = white_top
+        self.currently_playing = WHITE_COLOR_IDENTIFIER
         if testing == True:
             self.boardsquares = boardsquares
         elif white_top == True:
@@ -118,8 +119,6 @@ class ChessBoard:
         self.playtype = type
         self.initialize_pieces()
         self.calculate_moves_for_all_pieces()
-
-        self.currently_playing = WHITE_COLOR_IDENTIFIER
 
     def initialize_pieces(self):
         for r in range(NUMBER_OF_ROWS):
@@ -176,12 +175,13 @@ class ChessBoard:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        pprint(game_copy.boardsquares)
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
 
         elif Helpers.is_knight(piece):
             possible_move_options = [(r+2, c+1),
@@ -199,13 +199,14 @@ class ChessBoard:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        game_copy.pieces_to_board()
-                        print("^^ de la cal")
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
+
         elif Helpers.is_king(piece):
             possible_move_options = [(r+1, c),
                                      (r+1, c-1),
@@ -222,11 +223,14 @@ class ChessBoard:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
+
         elif Helpers.is_queen(piece):
             possible_move_options = []
 
@@ -312,17 +316,21 @@ class ChessBoard:
                     break
                 copy_c = copy_c+1
                 copy_r = copy_r-1
-
+            c = current_c
+            r = current_r
             for move in possible_move_options:
                 if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
+
         elif Helpers.is_rook(piece):
             possible_move_options = []
 
@@ -360,17 +368,21 @@ class ChessBoard:
                         break
                 else:
                     break
-
+            c = current_c
+            r = current_r
             for move in possible_move_options:
                 if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
+
         elif Helpers.is_bishop(piece):
             possible_move_options = []
 
@@ -425,19 +437,23 @@ class ChessBoard:
                 copy_c = copy_c+1
                 copy_r = copy_r-1
 
+            c = current_c
+            r = current_r
+
             for move in possible_move_options:
                 if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7:
                     if self.testing == False:
                         game_copy = ChessBoard(
                             self.playtype, self.white_top, True, self.pieces_to_board())
-                        game_copy.make_move(r, c, move[0], move[1])
+                        game_copy.currently_playing = self.currently_playing
+                        game_copy.make_move(move[0], move[1], r, c)
                         if not game_copy.is_in_check():
                             piece.possible_moves.append(move)
                     else:
                         piece.possible_moves.append(move)
+            return len(piece.possible_moves)
 
     def pieces_to_board(self):
-        print("eu am incercat da nu s a vrut")
         board = [['' for c in range(NUMBER_OF_COLUMNS)]
                  for r in range(NUMBER_OF_ROWS)]
         for r in range(NUMBER_OF_ROWS):
@@ -454,7 +470,6 @@ class ChessBoard:
                         board[r][c] = self.boardpieces[r][c].identifier
                     else:
                         board[r][c] = EMPTY_IDENTIFIER
-        pprint(board)
         return board
 
     def board_to_pieces(self):
@@ -539,10 +554,24 @@ class ChessBoard:
             return [from_pos, to_pos]
 
     def calculate_moves_for_all_pieces(self):
+        black_totalsum = 0
+        white_totalsum = 0
         for r in range(NUMBER_OF_ROWS):
             for c in range(NUMBER_OF_COLUMNS):
                 if not Helpers.is_empty(self.boardpieces[r][c]):
-                    self.calculate_possible_moves(r, c)
+                    # pprint(self.pieces_to_board())
+                    # print("INAINTE DE DEZASTRU", r, c)
+                    total_moves = self.calculate_possible_moves(r, c)
+                    if (self.testing == False):
+                        if self.boardpieces[r][c].color == BLACK_COLOR_IDENTIFIER:
+                            black_totalsum = black_totalsum+total_moves
+                        if self.boardpieces[r][c].color == WHITE_COLOR_IDENTIFIER:
+                            white_totalsum = white_totalsum+total_moves
+        if self.testing==False:
+            if black_totalsum == 0:
+                print("NEGRU ESTE IN SAH MAT FRATILOR!!!!!!!!!!!!!")
+            if white_totalsum == 0:
+                print("ALB ESTE IN SAH MAT FRATILOR!!!!!!!!!!!!!")
 
     def check_queen_promotion(self, r, c, color):
         """
@@ -654,14 +683,17 @@ class ChessBoard:
             return code
 
     def make_move(self, r, c, r2, c2):
-        print(r, c, r2, c2, self.testing)
+
         will_capture = False
         if not Helpers.is_empty(self.boardpieces[r][c]):
             will_capture = True
-        print(self.boardpieces[r2][c2], "TESSSTTTTTT")
         self.boardpieces[r][c] = self.boardpieces[r2][c2]
-        self.boardpieces[r2][c2] = None
-        self.pieces_to_board()
+        # pprint(self.pieces_to_board())
+        # print("de la mine!!")
         self.boardpieces[r][c].moved = True
+
+        self.boardpieces[r2][c2] = None
         self.calculate_moves_for_all_pieces()
+        self.currently_playing = WHITE_COLOR_IDENTIFIER if self.currently_playing == BLACK_COLOR_IDENTIFIER else BLACK_COLOR_IDENTIFIER
+
         return will_capture

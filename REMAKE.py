@@ -137,7 +137,6 @@ class MainGame:
                     if not Helpers.is_empty(self.chessboard.boardpieces[pressed_r][pressed_c]) and (((self.chessboard.playtype == 2 and self.chessboard.white_top and self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER) or (self.chessboard.playtype == 2 and not self.chessboard.white_top and self.chessboard.currently_playing == WHITE_COLOR_IDENTIFIER)) or (self.chessboard.playtype == 1 and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)):
                         self.lastMousePos = (e.pos[0], e.pos[1])
                         self.dragged_piece = self.chessboard.boardpieces[pressed_r][pressed_c]
-                        self.chessboard.pieces_to_board()
                         self.dragged_piece_initial_pos = (pressed_r, pressed_c)
                         self.isdragging = True
                 elif e.type == pygame.MOUSEMOTION:
@@ -148,14 +147,12 @@ class MainGame:
                         pressed_c = int(e.pos[0]//SQUARE_SIZE)
                         pressed_r = int(e.pos[1]//SQUARE_SIZE)
                         if (pressed_r, pressed_c) in self.chessboard.boardpieces[self.dragged_piece_initial_pos[0]][self.dragged_piece_initial_pos[1]].possible_moves:
-                            will_capture=self.chessboard.make_move(
+                            will_capture = self.chessboard.make_move(
                                 pressed_r, pressed_c, self.dragged_piece_initial_pos[0], self.dragged_piece_initial_pos[1])
                             self.chessboard.check_queen_promotion(
                                 pressed_r, pressed_c, WHITE_COLOR_IDENTIFIER)
-                           
-
-                            if self.chessboard.playtype == 1:
-                                self.chessboard.currently_playing = WHITE_COLOR_IDENTIFIER if self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER else BLACK_COLOR_IDENTIFIER
+                            self.chessboard.check_queen_promotion(
+                                pressed_r, pressed_c, BLACK_COLOR_IDENTIFIER)
 
                             if will_capture:
                                 pygame.mixer.Sound.play(pygame.mixer.Sound(
@@ -173,7 +170,8 @@ class MainGame:
                         self.dragged_piece = None
                 elif e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_r:
-                        self.__init__()
+                        self.__init__(self.chessboard.playtype,
+                                      self.chessboard.white_top)
                 elif e.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit(1)
@@ -181,5 +179,5 @@ class MainGame:
             pygame.display.update()
 
 
-maingame = MainGame(1, False)
+maingame = MainGame(1, True)
 maingame.maingameloop()
