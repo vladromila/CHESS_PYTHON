@@ -132,13 +132,14 @@ class MainGame:
             #         self.last_time = None
             for e in pygame.event.get():
                 if e.type == pygame.MOUSEBUTTONDOWN:
-                    pressed_c = int(e.pos[0]//SQUARE_SIZE)
-                    pressed_r = int(e.pos[1]//SQUARE_SIZE)
-                    if not Helpers.is_empty(self.chessboard.boardpieces[pressed_r][pressed_c]) and (((self.chessboard.playtype == 2 and self.chessboard.white_top and self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER) or (self.chessboard.playtype == 2 and not self.chessboard.white_top and self.chessboard.currently_playing == WHITE_COLOR_IDENTIFIER)) or (self.chessboard.playtype == 1 and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)):
-                        self.lastMousePos = (e.pos[0], e.pos[1])
-                        self.dragged_piece = self.chessboard.boardpieces[pressed_r][pressed_c]
-                        self.dragged_piece_initial_pos = (pressed_r, pressed_c)
-                        self.isdragging = True
+                    if not self.chessboard.is_checkmate:
+                        pressed_c = int(e.pos[0]//SQUARE_SIZE)
+                        pressed_r = int(e.pos[1]//SQUARE_SIZE)
+                        if not Helpers.is_empty(self.chessboard.boardpieces[pressed_r][pressed_c]) and (((self.chessboard.playtype == 2 and self.chessboard.white_top and self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER) or (self.chessboard.playtype == 2 and not self.chessboard.white_top and self.chessboard.currently_playing == WHITE_COLOR_IDENTIFIER)) or (self.chessboard.playtype == 1 and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)):
+                            self.lastMousePos = (e.pos[0], e.pos[1])
+                            self.dragged_piece = self.chessboard.boardpieces[pressed_r][pressed_c]
+                            self.dragged_piece_initial_pos = (pressed_r, pressed_c)
+                            self.isdragging = True
                 elif e.type == pygame.MOUSEMOTION:
                     if self.isdragging:
                         self.lastMousePos = (e.pos[0], e.pos[1])
@@ -179,5 +180,5 @@ class MainGame:
             pygame.display.update()
 
 
-maingame = MainGame(1, True)
+maingame = MainGame(2, False)
 maingame.maingameloop()
