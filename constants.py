@@ -2,7 +2,7 @@
 File used to define default colors, sizes and other static variables.
 """
 SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 900
+SCREEN_HEIGHT = 1000
 WHITE_SQUARE_COLOR = (235, 236, 208, 255)
 BLACK_SQUARE_COLOR = (119, 149, 86, 255)
 WHITE_YELLOW_COLOR = (246, 246, 105, 255)
