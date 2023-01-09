@@ -7,7 +7,8 @@ import io
 from stockfish import Stockfish
 import time
 import copy
-
+import random
+import chess
 """
 Class that saves the data that matters for every piece
 """
@@ -83,6 +84,7 @@ class Helpers:
 
 
 stockfish = Stockfish(os.path.abspath("stockfish.exe"))
+board = chess.Board()
 
 
 class ChessBoard:
@@ -124,9 +126,15 @@ class ChessBoard:
         self.calculate_moves_for_all_pieces()
         self.is_checkmate = False
         self.checkmate_color = None
+        self.wait_for_next_move = False
+        self.last_time = None
+        self.last_move = None
         if not self.testing:
+            board.reset()
             stockfish.set_fen_position(
                 self.pieces_to_fen(WHITE_COLOR_IDENTIFIER))
+            if self.playtype != 1 and (self.white_top == True or self.playtype == 3):
+                self.wait_for_next_move = True
         # self.stockfish.update_engine_parameters({"Threads": 2, "Hash": 12})
 
     def initialize_pieces(self):
@@ -226,6 +234,18 @@ class ChessBoard:
                                      (r-1, c-1),
                                      (r-1, c+1),
                                      ]
+            if self.white_top:
+                if (r == 0 or r == 7) and c == 3 and piece.moved == False:
+                    if self.boardpieces[r][c-1] == None and self.boardpieces[r][c-2] == None and not Helpers.is_empty(self.boardpieces[r][c-3]) and Helpers.is_rook(self.boardpieces[r][c-3]) and self.boardpieces[r][c-3].moved == False:
+                        possible_move_options.append((r, c-2))
+                    if self.boardpieces[r][c+1] == None and self.boardpieces[r][c+2] == None and self.boardpieces[r][c+3] == None and not Helpers.is_empty(self.boardpieces[r][c+4]) and Helpers.is_rook(self.boardpieces[r][c+4]) and self.boardpieces[r][c+4].moved == False:
+                        possible_move_options.append((r, c+2))
+            else:
+                if (r == 0 or r == 7) and c == 4 and piece.moved == False:
+                    if self.boardpieces[r][c-1] == None and self.boardpieces[r][c-2] == None and self.boardpieces[r][c-3] == None and not Helpers.is_empty(self.boardpieces[r][c-4]) and Helpers.is_rook(self.boardpieces[r][c-4]) and self.boardpieces[r][c-4].moved == False:
+                        possible_move_options.append((r, c-2))
+                    if self.boardpieces[r][c+1] == None and self.boardpieces[r][c+2] == None and not Helpers.is_empty(self.boardpieces[r][c+3]) and Helpers.is_rook(self.boardpieces[r][c+3]) and self.boardpieces[r][c+3].moved == False:
+                        possible_move_options.append((r, c+2))
 
             for move in possible_move_options:
                 if move[0] >= 0 and move[0] <= 7 and move[1] >= 0 and move[1] <= 7 and Helpers.is_enemy_or_empty(piece, self.boardpieces[move[0]][move[1]]):
@@ -545,7 +565,8 @@ class ChessBoard:
 
     def calculate_move_based_on_prediction(self, value):
         from_pos = value[:2]
-        to_pos = value[-2:]
+        to_pos = value[2:len(value)]
+        print(value, to_pos, to_pos[1], "HAI SA VEDEM DE CE CRAPA OK? THANKS!")
         if self.white_top:
             from_pos = (int(from_pos[1])-1,
                         NUMBER_OF_COLUMNS-ALPHATONR[from_pos[0]]-1)
@@ -577,32 +598,39 @@ class ChessBoard:
             if black_totalsum == 0:
                 self.is_checkmate = True
                 self.checkmate_color = BLACK_COLOR_IDENTIFIER
+                print(board.is_stalemate())
                 print("SAH MAT NEGRU")
             if white_totalsum == 0:
                 self.is_checkmate = True
                 self.checkmate_color = WHITE_COLOR_IDENTIFIER
                 print("SAH MAT ALB")
 
-    def check_queen_promotion(self, r, c, color):
+    def check_queen_promotion(self, r, c):
         """
         Queen promotion for white pawns
         """
         if Helpers.is_pawn(self.boardpieces[r][c]) and (r == 0 and self.boardpieces[r][c].color == WHITE_COLOR_IDENTIFIER):
             self.boardpieces[r][c] = ChessPiece(
                 WHITE_QUEEN_IDENTIFIER)
+            return True
         if Helpers.is_pawn(self.boardpieces[r][c]) and (r == 7 and self.boardpieces[r][c].color == WHITE_COLOR_IDENTIFIER):
             self.boardpieces[r][c] = ChessPiece(
                 WHITE_QUEEN_IDENTIFIER)
+            return True
         """
         Queen promotion for black pawns
         """
         if Helpers.is_pawn(self.boardpieces[r][c]) and (r == 7 and self.boardpieces[r][c].color == BLACK_COLOR_IDENTIFIER):
             self.boardpieces[r][c] = ChessPiece(
                 BLACK_QUEEN_IDENTIFIER)
+            return True
+
         if Helpers.is_pawn(self.boardpieces[r][c]) and (r == 0 and self.boardpieces[r][c].color == BLACK_COLOR_IDENTIFIER):
             self.boardpieces[r][c] = ChessPiece(
                 BLACK_QUEEN_IDENTIFIER)
+            return True
 
+        return False
     # def calculate_next_move(self):
     #     # self.currently_playing = WHITE_COLOR_IDENTIFIER if self.currently_playing == BLACK_COLOR_IDENTIFIER else BLACK_COLOR_IDENTIFIER
 
@@ -693,26 +721,69 @@ class ChessBoard:
             return code
 
     def calculate_next_move(self):
-        result = self.calculate_move_based_on_prediction(
-            stockfish.get_best_move())
-        print(result[1][0], result[1][1], result[0][0], result[0][1])
-        self.make_move(result[1][0], result[1][1], result[0][0], result[0][1])
+        print(self.currently_playing, "AICI S AR PUTEA SA PICE",
+              stockfish.get_fen_position())
+        stockfish_move = stockfish.get_best_move()
+        print("alegerea facuta:", stockfish_move)
+        if stockfish_move != None:
+            result = self.calculate_move_based_on_prediction(stockfish_move)
+            print(result[1][0], result[1][1], result[0][0], result[0][1])
+            self.make_move(result[1][0], result[1][1],
+                           result[0][0], result[0][1])
+        else:
+            self.wait_for_next_move = False
+            self.last_time = None
+
+        # to_choose_list = []
+        # for r in range(NUMBER_OF_ROWS):
+        #     for c in range(NUMBER_OF_COLUMNS):
+        #         if not Helpers.is_empty(self.boardpieces[r][c]) and self.boardpieces[r][c].color == self.currently_playing:
+        #             for move in self.boardpieces[r][c].possible_moves:
+        #                 to_choose_list.append([(r, c), move])
+        # result = random.choice(to_choose_list)
+        # self.make_move(result[1][0], result[1][1], result[0][0], result[0][1])
 
     def make_move(self, r, c, r2, c2):
         will_capture = False
         if not Helpers.is_empty(self.boardpieces[r][c]):
             will_capture = True
+        if Helpers.is_king(self.boardpieces[r2][c2]):
+            if abs(c-c2) == 2:
+                if c2 > c:
+                    self.boardpieces[r][int((c+c2)/2)] = self.boardpieces[r][0]
+                    self.boardpieces[r][0] = None
+                if c2 < c:
+                    self.boardpieces[r][int((c+c2)/2)] = self.boardpieces[r][7]
+                    self.boardpieces[r][7] = None
         self.boardpieces[r][c] = self.boardpieces[r2][c2]
         self.boardpieces[r][c].moved = True
-        if not self.testing:
-            stockfish.make_moves_from_current_position([self.calculate_move_code_from_coordinates(
-                r2, c2)+self.calculate_move_code_from_coordinates(r, c)])
 
+        if not self.testing:
+            if self.check_queen_promotion(r, c):
+                board.push(chess.Move.from_uci(self.calculate_move_code_from_coordinates(
+                    r2, c2)+self.calculate_move_code_from_coordinates(r, c)+"q"))
+                stockfish.make_moves_from_current_position([self.calculate_move_code_from_coordinates(
+                    r2, c2)+self.calculate_move_code_from_coordinates(r, c)+"q"])
+            else:
+                board.push(chess.Move.from_uci(self.calculate_move_code_from_coordinates(
+                    r2, c2)+self.calculate_move_code_from_coordinates(r, c)))
+                stockfish.make_moves_from_current_position([self.calculate_move_code_from_coordinates(
+                    r2, c2)+self.calculate_move_code_from_coordinates(r, c)])
+        self.last_move = [(r2, c2), (r, c)]
         self.boardpieces[r2][c2] = None
         self.calculate_moves_for_all_pieces()
         self.currently_playing = WHITE_COLOR_IDENTIFIER if self.currently_playing == BLACK_COLOR_IDENTIFIER else BLACK_COLOR_IDENTIFIER
-        if self.playtype == 2 and self.testing == False:
-            print(self.currently_playing, self.white_top)
-            if (self.currently_playing == WHITE_COLOR_IDENTIFIER and self.white_top == True) or (self.currently_playing == BLACK_COLOR_IDENTIFIER and self.white_top == False):
-                self.calculate_next_move()
+        if not self.testing:
+            print(self.pieces_to_fen(self.currently_playing))
+        if not self.is_checkmate:
+            if self.playtype == 2 and self.testing == False:
+                if (self.currently_playing == WHITE_COLOR_IDENTIFIER and self.white_top == True) or (self.currently_playing == BLACK_COLOR_IDENTIFIER and self.white_top == False):
+                    self.wait_for_next_move = True
+                else:
+                    self.wait_for_next_move = False
+                    self.last_time = None
+            elif self.playtype == 3:
+
+                self.wait_for_next_move = False
+                self.last_time = None
         return will_capture

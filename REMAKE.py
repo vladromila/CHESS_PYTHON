@@ -8,7 +8,7 @@ from stockfish import Stockfish
 import time
 import copy
 from chessboard import ChessBoard, Helpers
-
+import chess
 """
 Class that saves the data that matters for every piece
 """
@@ -43,6 +43,13 @@ class MainGame:
                     to_display_color = BLACK_SQUARE_COLOR
                 else:
                     to_display_color = WHITE_SQUARE_COLOR
+
+                if self.chessboard.last_move != None:
+                    if (r, c) in self.chessboard.last_move:
+                        if (r+c) % 2 == 1:
+                            to_display_color = BLACK_YELLOW_COLOR
+                        else:
+                            to_display_color = WHITE_YELLOW_COLOR
 
                 to_display_rect = (
                     c*SQUARE_SIZE, r*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
@@ -125,20 +132,27 @@ class MainGame:
 
             if self.isdragging:
                 self.display_dragged_piece()
-            # if self.wait_for_next_move:
-            #     if pygame.time.get_ticks() - self.last_time > 1000:
-            #         self.calculate_next_move()
-            #         self.wait_for_next_move = False
-            #         self.last_time = None
+            if not self.chessboard.is_checkmate:
+                if self.chessboard.wait_for_next_move:
+                    if (self.chessboard.last_time == None):
+                        self.chessboard.last_time = pygame.time.get_ticks()
+                    if pygame.time.get_ticks() - self.chessboard.last_time > 100:
+                        self.chessboard.calculate_next_move()
+                        self.wait_for_next_move = False
+                        self.last_time = None
+                        if (self.chessboard.playtype == 3):
+                            self.chessboard.wait_for_next_move = True
+                            self.chessboard.last_time = pygame.time.get_ticks()
             for e in pygame.event.get():
                 if e.type == pygame.MOUSEBUTTONDOWN:
                     if not self.chessboard.is_checkmate:
                         pressed_c = int(e.pos[0]//SQUARE_SIZE)
                         pressed_r = int(e.pos[1]//SQUARE_SIZE)
-                        if not Helpers.is_empty(self.chessboard.boardpieces[pressed_r][pressed_c]) and (((self.chessboard.playtype == 2 and self.chessboard.white_top and self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER) or (self.chessboard.playtype == 2 and not self.chessboard.white_top and self.chessboard.currently_playing == WHITE_COLOR_IDENTIFIER)) or (self.chessboard.playtype == 1 and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)):
+                        if not Helpers.is_empty(self.chessboard.boardpieces[pressed_r][pressed_c]) and (((self.chessboard.playtype == 2 and self.chessboard.white_top and self.chessboard.currently_playing == BLACK_COLOR_IDENTIFIER and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing) or (self.chessboard.playtype == 2 and not self.chessboard.white_top and self.chessboard.currently_playing == WHITE_COLOR_IDENTIFIER and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)) or (self.chessboard.playtype == 1 and self.chessboard.boardpieces[pressed_r][pressed_c].color == self.chessboard.currently_playing)):
                             self.lastMousePos = (e.pos[0], e.pos[1])
                             self.dragged_piece = self.chessboard.boardpieces[pressed_r][pressed_c]
-                            self.dragged_piece_initial_pos = (pressed_r, pressed_c)
+                            self.dragged_piece_initial_pos = (
+                                pressed_r, pressed_c)
                             self.isdragging = True
                 elif e.type == pygame.MOUSEMOTION:
                     if self.isdragging:
@@ -150,10 +164,6 @@ class MainGame:
                         if (pressed_r, pressed_c) in self.chessboard.boardpieces[self.dragged_piece_initial_pos[0]][self.dragged_piece_initial_pos[1]].possible_moves:
                             will_capture = self.chessboard.make_move(
                                 pressed_r, pressed_c, self.dragged_piece_initial_pos[0], self.dragged_piece_initial_pos[1])
-                            self.chessboard.check_queen_promotion(
-                                pressed_r, pressed_c, WHITE_COLOR_IDENTIFIER)
-                            self.chessboard.check_queen_promotion(
-                                pressed_r, pressed_c, BLACK_COLOR_IDENTIFIER)
 
                             if will_capture:
                                 pygame.mixer.Sound.play(pygame.mixer.Sound(
@@ -180,5 +190,5 @@ class MainGame:
             pygame.display.update()
 
 
-maingame = MainGame(2, False)
+maingame = MainGame(1, False)
 maingame.maingameloop()
