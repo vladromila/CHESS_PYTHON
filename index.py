@@ -3,22 +3,22 @@ import sys
 import os
 from constants import *
 from pprint import pprint
-import io
 from stockfish import Stockfish
-import time
-import copy
 from chessboard import ChessBoard, Helpers
 import chess
+import random
+import argparse
+
 """
-Class that saves the data that matters for every piece
+Class that handles the main game logic, event handlers and pygame renderers
 """
 
 
 class MainGame:
 
-    def __init__(self, type, white_top=False):
+    def __init__(self, type, white_top, ai):
 
-        self.chessboard = ChessBoard(type, white_top)
+        self.chessboard = ChessBoard(type, white_top, ai)
         pygame.init()
         pygame.display.set_caption("Chess by Vlad Romila@3A1")
         self.display = pygame.display.set_mode(
@@ -30,6 +30,12 @@ class MainGame:
         self.dragged_piece_initial_pos = (0, 0)
         self.lastMousePos = (0, 0)
 
+    """
+    Function that returns the file path to the image of a piece based on its identifier and hovered state
+    identifier --> String - identifier of the piece
+    hovered --> Boolean - True if the piece is being tracked
+    """
+
     def get_texture(self, identifier, hovered):
         if hovered == True:
             return os.path.join(
@@ -38,6 +44,9 @@ class MainGame:
             return os.path.join(
                 f'images/imgs-80px/{identifier}.png')
 
+    """
+    Function that displays the background
+    """
     def display_background(self):
         for cr in range(NUMBER_OF_ROWS):
             for c in range(NUMBER_OF_COLUMNS):
@@ -60,22 +69,22 @@ class MainGame:
                     self.display, to_display_color, to_display_rect)
 
                 if c == 0:
-                    color = BLACK_SQUARE_COLOR if r % 2 == 0 else WHITE_SQUARE_COLOR
+                    color = BLACK_SQUARE_COLOR if r % 2 == 1 else WHITE_SQUARE_COLOR
                     lbl = pygame.font.SysFont('monospace', 18, bold=True).render(
-                        str(r+1 if self.chessboard.white_top else NUMBER_OF_ROWS-r), 1, color)
+                        str(r if self.chessboard.white_top else NUMBER_OF_ROWS-r+1), 1, color)
                     lbl_pos = (5, 5 + r * SQUARE_SIZE)
                     self.display.blit(lbl, lbl_pos)
 
                 if c == 7:
-                    color = WHITE_SQUARE_COLOR if r % 2 == 0 else BLACK_SQUARE_COLOR
+                    color = WHITE_SQUARE_COLOR if r % 2 == 1 else BLACK_SQUARE_COLOR
                     lbl = pygame.font.SysFont('monospace', 18, bold=True).render(
-                        str(r+1 if self.chessboard.white_top else NUMBER_OF_ROWS-r), 1, color)
+                        str(r if self.chessboard.white_top else NUMBER_OF_ROWS-r+1), 1, color)
                     lbl_pos = ((c+1) * SQUARE_SIZE - 15, 5 + r * SQUARE_SIZE)
                     self.display.blit(lbl, lbl_pos)
 
-                if r == 7:
+                if r == 8:
                     color = BLACK_SQUARE_COLOR if (
-                        r + c) % 2 == 0 else WHITE_SQUARE_COLOR
+                        r + c) % 2 == 1 else WHITE_SQUARE_COLOR
                     lbl = pygame.font.SysFont('monospace', 18, bold=True).render(
                         ALPHACOLS[NUMBER_OF_COLUMNS - c-1] if self.chessboard.white_top else ALPHACOLS[c], 1, color)
                     lbl_pos = (c * SQUARE_SIZE + SQUARE_SIZE /
@@ -83,12 +92,13 @@ class MainGame:
                     # blit
                     self.display.blit(lbl, lbl_pos)
 
-                if r == 0:
+                if r == 1:
                     color = BLACK_SQUARE_COLOR if (
-                        r + c) % 2 == 0 else WHITE_SQUARE_COLOR
+                        r + c) % 2 == 1 else WHITE_SQUARE_COLOR
                     lbl = pygame.font.SysFont('monospace', 18, bold=True).render(
                         ALPHACOLS[NUMBER_OF_COLUMNS - c-1] if self.chessboard.white_top else ALPHACOLS[c], 1, color)
-                    lbl_pos = (c * SQUARE_SIZE + SQUARE_SIZE/2 - 5, 0)
+                    lbl_pos = (c * SQUARE_SIZE + SQUARE_SIZE /
+                               2 - 5, SQUARE_SIZE + 0)
                     # blit
                     self.display.blit(lbl, lbl_pos)
         top_capture_container = (
@@ -108,7 +118,9 @@ class MainGame:
             0, 9*SQUARE_SIZE, 8*SQUARE_SIZE, 3)
         pygame.draw.rect(
             self.display, (0, 0, 0), bottom_capture_container_separator)
-
+    """
+    Function that displays the possible moves of a piece
+    """
     def display_possible_moves(self):
         possible_moves = self.chessboard.boardpieces[self.dragged_piece_initial_pos[0]
                                                      ][self.dragged_piece_initial_pos[1]].possible_moves
@@ -119,6 +131,9 @@ class MainGame:
             pygame.draw.rect(
                 self.display, POSSIBLE_MOVE_HIGHLIGHT, to_display_rect, 3)
 
+    """
+    Function that displays the pieces
+    """
     def display_pieces(self):
         for r in range(NUMBER_OF_ROWS):
             for c in range(NUMBER_OF_COLUMNS):
@@ -133,15 +148,19 @@ class MainGame:
                             SQUARE_SIZE + SQUARE_SIZE // 2
                         texture_rect = img.get_rect(center=img_center)
                         self.display.blit(img, texture_rect)
-
+    """
+    Function that displays the pieces captured by the white color
+    """
     def display_white_captured_pieces(self):
+        row_pos = 9 * SQUARE_SIZE + SQUARE_SIZE // 2 if self.chessboard.white_top == False else 0 * \
+            SQUARE_SIZE + SQUARE_SIZE // 2
         has_pawns = 1 if self.chessboard.captures[WHITE_COLOR_IDENTIFIER][BLACK_PAWN_IDENTIFIER] > 0 else 0
         pawns = self.chessboard.captures[WHITE_COLOR_IDENTIFIER][BLACK_PAWN_IDENTIFIER]
         for i in range(pawns):
             texture = self.get_texture(BLACK_PAWN_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = 0.25*i * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -151,7 +170,7 @@ class MainGame:
             texture = self.get_texture(BLACK_BISHOP_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + pawns*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -161,7 +180,7 @@ class MainGame:
             texture = self.get_texture(BLACK_KNIGHT_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + pawns*0.25 + bishops*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -171,7 +190,7 @@ class MainGame:
             texture = self.get_texture(BLACK_ROOK_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + has_knights*0.5 + pawns*0.25 + bishops*0.25 + knights*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -180,7 +199,7 @@ class MainGame:
             texture = self.get_texture(BLACK_QUEEN_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + has_knights*0.5 + has_rooks*0.5 + pawns*0.25 + bishops*0.25 + knights*0.25 + rooks*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -191,15 +210,19 @@ class MainGame:
         #         SQUARE_SIZE // 2, 9 * SQUARE_SIZE + SQUARE_SIZE // 2
         #     texture_rect = img.get_rect(center=img_center)
         #     self.display.blit(img, texture_rect)
-
+    """
+    Function that displays the pieces captured by the black color
+    """
     def display_black_captured_pieces(self):
         has_pawns = 1 if self.chessboard.captures[BLACK_COLOR_IDENTIFIER][WHITE_PAWN_IDENTIFIER] > 0 else 0
+        row_pos = 0 * SQUARE_SIZE + SQUARE_SIZE // 2 if self.chessboard.white_top == False else 9 * \
+            SQUARE_SIZE + SQUARE_SIZE // 2
         pawns = self.chessboard.captures[BLACK_COLOR_IDENTIFIER][WHITE_PAWN_IDENTIFIER]
         for i in range(pawns):
             texture = self.get_texture(WHITE_PAWN_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = 0.25*i * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 0 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -209,7 +232,7 @@ class MainGame:
             texture = self.get_texture(WHITE_BISHOP_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + pawns*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 0 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -219,7 +242,7 @@ class MainGame:
             texture = self.get_texture(WHITE_KNIGHT_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + pawns*0.25 + bishops*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 0 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -229,7 +252,7 @@ class MainGame:
             texture = self.get_texture(WHITE_ROOK_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + has_knights*0.5 + pawns*0.25 + bishops*0.25 + knights*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 0 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -238,7 +261,7 @@ class MainGame:
             texture = self.get_texture(WHITE_QUEEN_IDENTIFIER, False)
             img = pygame.image.load(texture)
             img_center = (has_pawns*0.5 + has_bishops*0.5 + has_knights*0.5 + has_rooks*0.5 + pawns*0.25 + bishops*0.25 + knights*0.25 + rooks*0.25 + 0.25*i) * SQUARE_SIZE + \
-                SQUARE_SIZE // 2, 0 * SQUARE_SIZE + SQUARE_SIZE // 2
+                SQUARE_SIZE // 2, row_pos
             texture_rect = img.get_rect(center=img_center)
             self.display.blit(img, texture_rect)
 
@@ -250,6 +273,9 @@ class MainGame:
         #     texture_rect = img.get_rect(center=img_center)
         #     self.display.blit(img, texture_rect)
 
+    """
+    Function that renders the dragged piece
+    """
     def display_dragged_piece(self):
         texture = self.get_texture(self.dragged_piece.identifier, True)
         to_show_image = pygame.image.load(texture)
@@ -260,6 +286,9 @@ class MainGame:
         # blit
         self.display.blit(to_show_image, texture_rect)
 
+    """
+    Function that displays the game ended screen
+    """
     def display_game_ended_screen(self):
         to_display_rect = (0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
@@ -279,6 +308,9 @@ class MainGame:
         # blit
         self.display.blit(subtitle, subtitle_rect)
 
+    """
+    Function that handles the loop where the elements are rendered, and the event listeners are being handles
+    """
     def maingameloop(self):
         is_loop_active = True
         while is_loop_active:
@@ -344,17 +376,16 @@ class MainGame:
                             else:
                                 pygame.mixer.Sound.play(pygame.mixer.Sound(
                                     os.path.join('sounds/move.wav')))
-
+                        if self.dragged_piece_initial_pos != (pressed_r, pressed_c) and self.ispicked == True:
+                            self.dragged_piece = None
+                            self.ispicked = False
                     self.isdragging = False
-                    if self.dragged_piece_initial_pos != (pressed_r, pressed_c) and self.ispicked == True:
-                        self.dragged_piece = None
-                        self.ispicked = False
 
                 elif e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_r:
                         if self.chessboard.show_end_screen == False:
                             self.chessboard.__init__(self.chessboard.playtype,
-                                          self.chessboard.white_top)
+                                                     self.chessboard.white_top, self.chessboard.ai)
                         if self.chessboard.show_end_screen == True:
                             self.chessboard.show_end_screen = False
                 elif e.type == pygame.QUIT:
@@ -364,5 +395,16 @@ class MainGame:
             pygame.display.update()
 
 
-maingame = MainGame(2, True)
-maingame.maingameloop()
+parser = argparse.ArgumentParser(description='Get chess parameters.')
+parser.add_argument(
+    'mode',  help='Insert the mode of the game. 1: Player vs Player; 2: Player vs Computer; 3: Computer vs Computer;')
+parser.add_argument('--ai',
+                    help='Insert the type of the AI behind the computer moves. 1: Random Moves; 2: Stockfish', required=False)
+args = parser.parse_args()
+print(args)
+if (int(args.mode) == 1 or int(args.mode) == 2 or int(args.mode) == 3):
+    computer_type = 1 if int(args.ai) == 1 or args.ai == None else 2
+    white_top = False if int(args.mode) == 1 or args.mode == 3 else random.choice([
+        True, False])
+    maingame = MainGame(int(args.mode), white_top, computer_type)
+    maingame.maingameloop()
