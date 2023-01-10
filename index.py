@@ -12,8 +12,6 @@ import argparse
 """
 Class that handles the main game logic, event handlers and pygame renderers
 """
-
-
 class MainGame:
 
     def __init__(self, type, white_top, ai):
@@ -35,7 +33,6 @@ class MainGame:
     identifier --> String - identifier of the piece
     hovered --> Boolean - True if the piece is being tracked
     """
-
     def get_texture(self, identifier, hovered):
         if hovered == True:
             return os.path.join(
@@ -329,7 +326,7 @@ class MainGame:
                 if self.chessboard.wait_for_next_move:
                     if (self.chessboard.last_time == None):
                         self.chessboard.last_time = pygame.time.get_ticks()
-                    if pygame.time.get_ticks() - self.chessboard.last_time > 10:
+                    if pygame.time.get_ticks() - self.chessboard.last_time > 100:
                         will_capture = self.chessboard.calculate_next_move()
                         if will_capture:
                             pygame.mixer.Sound.play(pygame.mixer.Sound(
@@ -346,6 +343,7 @@ class MainGame:
             for e in pygame.event.get():
                 if e.type == pygame.MOUSEBUTTONDOWN:
                     if not self.chessboard.game_ended:
+                        #select or start dragging a piece
                         pressed_c = int(e.pos[0]//SQUARE_SIZE)
                         pressed_r = int(e.pos[1]//SQUARE_SIZE)-1
                         if pressed_c >= 0 and pressed_c <= 7 and pressed_r >= 0 and pressed_r <= 7:
@@ -357,6 +355,7 @@ class MainGame:
                                 self.startdragging = True
                                 self.ispicked = True
                 elif e.type == pygame.MOUSEMOTION:
+                    #drag piece in mouse move event handler
                     if self.startdragging == True and self.isdragging == False:
                         self.isdragging = True
                     if self.isdragging:
@@ -364,6 +363,7 @@ class MainGame:
                 elif e.type == pygame.MOUSEBUTTONUP:
                     self.startdragging = False
                     if self.isdragging or self.ispicked:
+                        #Make Move if selected square is not empty and the move is valid
                         pressed_c = int(e.pos[0]//SQUARE_SIZE)
                         pressed_r = int(e.pos[1]//SQUARE_SIZE)-1
                         if (pressed_r, pressed_c) in self.chessboard.boardpieces[self.dragged_piece_initial_pos[0]][self.dragged_piece_initial_pos[1]].possible_moves:
@@ -382,10 +382,13 @@ class MainGame:
                     self.isdragging = False
 
                 elif e.type == pygame.KEYDOWN:
+                    #R Key Press Handler
                     if e.key == pygame.K_r:
+                        #Restart Game
                         if self.chessboard.show_end_screen == False:
                             self.chessboard.__init__(self.chessboard.playtype,
                                                      self.chessboard.white_top, self.chessboard.ai)
+                        #Hide End Screen if visible
                         if self.chessboard.show_end_screen == True:
                             self.chessboard.show_end_screen = False
                 elif e.type == pygame.QUIT:
